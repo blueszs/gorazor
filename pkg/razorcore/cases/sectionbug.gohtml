@@ -1,0 +1,14 @@
+@{
+import (
+"cases/layout"
+"kp/models"
+)
+var layout *layout.base
+}
+
+
+@section js {
+ @for _, jsFile := range ctx.GetJS() {
+ <script src="@jsFile"></script>
+ }
+}

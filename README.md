@@ -1,9 +1,14 @@
-# GoRazor
+# gorazor
 
 [![Build Status](https://travis-ci.org/sipin/gorazor.svg?branch=master)](https://travis-ci.org/sipin/gorazor)
+[![Go Report Card](https://goreportcard.com/badge/github.com/sipin/gorazor?v=1)](https://goreportcard.com/report/github.com/sipin/gorazor)
+<a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-90%25-brightgreen.svg?longCache=true&style=flat)</a>
+[![996.icu](https://img.shields.io/badge/link-996.icu-red.svg)](https://996.icu)
+[![LICENSE](https://img.shields.io/badge/license-Anti%20996-blue.svg)](https://github.com/996icu/996.ICU/blob/master/LICENSE)
 
-GoRazor is the Go port of the razor view engine originated from [asp.net in 2011](http://weblogs.asp.net/scottgu/archive/2010/07/02/introducing-razor.aspx). In summary, GoRazor's:
+`gorazor` is the Go port of the razor view engine originated from [asp.net in 2011](http://weblogs.asp.net/scottgu/archive/2010/07/02/introducing-razor.aspx). In summary, `gorazor` is:
 
+* Extremely Fast. Templates are converted into Go code and then compiled with optimization.
 * Concise syntax, no delimiter like `<?`, `<%`, or `{{`.
   * Original [Razor Syntax](http://www.asp.net/web-pages/tutorials/basics/2-introduction-to-asp-net-web-programming-using-the-razor-syntax) & [quick reference](http://haacked.com/archive/2011/01/06/razor-syntax-quick-reference.aspx/) for asp.net.
 * Able to mix go code in view template
@@ -16,27 +21,79 @@ GoRazor is the Go port of the razor view engine originated from [asp.net in 2011
 * Embedding templates support
 * Layout/Section support
 
+# Extremely Fast
+
+`gorazor` is about **20X** times faster than [html/template](https://golang.org/pkg/html/template/) when using standard `strings.Builder` for template writing.
+
+When using `quicktemplate`'s `ByteBuffer` and `unsafeStrToBytes` method to for template writing, `gorazor`'s performance is comparable to [quicktemplate](https://github.com/valyala/quicktemplate), if not faster.
+
+Benchmark results:
+```bash
+$ go test -bench='Benchmark(Razor|RazorQuick|Quick|HTML)Template' -benchmem github.com/valyala/quicktemplate/tests github.com/sipin/gorazor/tests
+goos: windows
+goarch: amd64
+pkg: github.com/valyala/quicktemplate/tests
+BenchmarkQuickTemplate1-8       50000000                35.6 ns/op             0 B/op          0 allocs/op
+BenchmarkQuickTemplate10-8      10000000               152 ns/op               0 B/op          0 allocs/op
+BenchmarkQuickTemplate100-8      1000000              1460 ns/op               0 B/op          0 allocs/op
+BenchmarkHTMLTemplate1-8         2000000               712 ns/op             608 B/op         21 allocs/op
+BenchmarkHTMLTemplate10-8         500000              3586 ns/op            2834 B/op        111 allocs/op
+BenchmarkHTMLTemplate100-8         50000             35180 ns/op           28055 B/op       1146 allocs/op
+PASS
+ok      github.com/valyala/quicktemplate/tests  11.360s
+goos: windows
+goarch: amd64
+pkg: github.com/sipin/gorazor/tests
+BenchmarkRazorTemplate1-8                       30000000                49.8 ns/op           224 B/op          3 allocs/op
+BenchmarkRazorTemplate10-8                      10000000               122 ns/op             480 B/op          4 allocs/op
+BenchmarkRazorTemplate100-8                      2000000               931 ns/op            4064 B/op          7 allocs/op
+BenchmarkRazorQuickTemplate1-8                  100000000               19.9 ns/op             0 B/op          0 allocs/op
+BenchmarkRazorQuickTemplate10-8                 20000000                82.5 ns/op             0 B/op          0 allocs/op
+BenchmarkRazorQuickTemplate100-8                 2000000               767 ns/op               0 B/op          0 allocs/op
+BenchmarkRazorQuickTemplateOriginal1-8          100000000               17.4 ns/op             0 B/op          0 allocs/op
+BenchmarkRazorQuickTemplateOriginal10-8         20000000                68.8 ns/op             0 B/op          0 allocs/op
+BenchmarkRazorQuickTemplateOriginal100-8         2000000               656 ns/op               0 B/op          0 allocs/op
+PASS
+ok      github.com/sipin/gorazor/tests  19.921s
+```
+
+* `BenchmarkRazorQuickTemplate`'s manually modified ensure **exact output** as quicktemplate for comparism.
+* `BenchmarkRazorQuickTemplateOriginal` are `gorazor`'s default code-gen, which produce less white-space, thus faster.
+
 # Usage
 
-Install:
+`gorazor` supports `go 1.10` and above, for go version **below 1.10**, you may use [gorazor classic version](https://github.com/sipin/gorazor/releases/tag/v1.0).
+
+`go 1.12` are recommneded for better **compiler optimization**.
+
+## Install
 
 ```sh
-go get gopkg.in/fsnotify.v1
 go get github.com/sipin/gorazor
 ```
 
-Usage:
+## Usage
 
-`gorazor template_folder output_folder` or
-`gorazor template_file output_file` or
+* Process folder: `gorazor template_folder output_folder`
+* Process file: `gorazor template_file output_file`
 
-`gorazor -watch input_dir output_dir` to auto re-generate code when file changes.
+## Examples
+
+[Examples] gives examples using layout / helper etc.
+
+When using layout, you may need to set `-prefix` parameter, like:
 
 ```bash
-new/modify      ->   generate corresponding Go file, make new directory if necessary
-remove/rename   ->   remove/rename corresponding Go file or directory
-```
+git clone https://github.com/sipin/gorazor/
+cd gorazor
+go build
 
+# -prefix parameter here tells gorazor the current folder is the base path for github.com/sipin/gorazor
+# So that, when importing "github.com/sipin/gorazor/examples/tpl/layout" in example/tpl/home.gohtml
+# gorazor will know how to find the layout/helper files
+./gorazor -prefix github.com/sipin/gorazor ./examples/tpl ./examples/tpl
+go run example/main.go
+```
 
 # Syntax
 
@@ -95,7 +152,7 @@ Please use [example](https://github.com/sipin/gorazor/blob/master/examples/tpl/h
 
 ## Code block
 
-It's possible to insert arbitrary go code block in the template, like create new variable.
+Arbitrary go code could be used in template, like create new variable.
 
 ```html
 @{
@@ -109,7 +166,7 @@ It's possible to insert arbitrary go code block in the template, like create new
 </div>
 ```
 
-It's recommendation to keep clean separation of code & view. Please consider move logic into your code before creating a code block in template.
+It's recommended to keep clean separation of code & view. **Please consider** move logic into your code before creating a code block in template.
 
 ## Declaration
 
@@ -125,8 +182,10 @@ like:
 @{
 	import  (
 		"kp/models"   //import `"kp/models"` package
-		"tpl/layout/base"  //Use tpl/layout package's **base func** for layout
+		"tpl/layout"  //import tpl/layout namespace
 	)
+
+	layout := layout.Base //Use layout package's **Base func** for layout
 	var user *models.User //1st template param
 	var blog *models.Blog //2nd template param
 }
@@ -145,7 +204,7 @@ If your template doesn't need any model input, then just leave it blank.
 
 ## Helper / Include other template
 
-As gorazor compiles templates to go function, embedding another template is just calling the generated function, like any other go function.
+As `gorazor` compiles templates to go function, embedding another template is just calling the generated function, like any other go function.
 
 However, if the template are designed to be embedded, it must be under `helper` namespace, i.e. put them in `helper` sub-folder.
 
@@ -159,7 +218,7 @@ So, using a helper template is similar to:
 
 ```
 
-GoRazor won't HTML escape the output of `helper.XXX`.
+`gorazor` won't HTML escape the output of `helper.XXX`.
 
 Please use [example](https://github.com/sipin/gorazor/blob/master/examples/tpl/home.gohtml) for reference.
 
@@ -170,14 +229,22 @@ The syntax for declaring layout is a bit tricky, in the example mentioned above:
 ```go
 @{
 	import  (
-		"tpl/layout/base"
+		"tpl/layout"
 	)
+
+	layout := layout.Base //Use layout package's **base func** for layout
 }
 ```
 
-`"tpl/layout/base"` **is not** a package, it's actually referring to `"tpl/layout"` package's **Base** function, which should be generated by `tpl/layout/base.gohtml`.
+`"tpl/layout"` **is** a the layout package namespace, and the `layout` variable refers to `"layout.Base"` func, which should be generated by `tpl/layout/base.gohtml`.
 
-GoRazor is using the second last part of namespace `layout` as a magic string to decide if the import is for layout declaration or normal import.
+> Must use `layout` as the variable name
+
+### Package / Variable convention
+
+* The namespace/folder name for layout templates **must be** `layout`
+  * `gorazor` relies on this to determine if a template for layout
+* The template `variable name` also **must be** `layout`
 
 A layout file `tpl/layout/base.gohtml` may look like:
 
@@ -206,11 +273,12 @@ A layout file `tpl/layout/base.gohtml` may look like:
 </html>
 ```
 
-It's just a usual gorazor template, but:
+It's just a usual `gorazor` template, but:
 
 * First param must be `var body string` (As it's always required, maybe we could remove it in future?)
 * All params **must be** string, each param is considered as a **section**, the variable name is the **section name**.
 * Under `layout` package, i.e. within "layout" folder.
+  * Optionally, use `isLayout := true` to declare a template as layout
 
 A template using such layout `tpl/index.gohtml` may look like:
 
@@ -219,6 +287,8 @@ A template using such layout `tpl/index.gohtml` may look like:
 	import (
 		"tpl/layout"
 	)
+
+	layout := layout.Base
 }
 
 @section footer {
@@ -226,6 +296,18 @@ A template using such layout `tpl/index.gohtml` may look like:
 }
 
 <h2>Welcome to homepage</h2>
+```
+
+It's also possible to use import alias:
+
+```html
+@{
+	import (
+		share "tpl/layout"
+	)
+
+	layout := share.Base
+}
 ```
 
 With the page, the page content will be treated as the `body` section in layout.
@@ -278,13 +360,8 @@ Here is a simple example of [gorazor templates](https://github.com/sipin/gorazor
 
 ### Sublime Text 2/3
 
-**Syntax highlight** Search & install `GoRazor` via Package Control.
-
-![syntax highlight](https://lh4.googleusercontent.com/-_mhaTNt04aU/U7kaSbSXCMI/AAAAAAAAH48/06DintuZPVE/w875-h770-p/Screen+Shot+2014-07-06+at+2.17.49+PM.png)
-
-**Context aware auto-completion**, you may need to [manually modify](https://github.com/sipin/GoSublime/commit/fd0b979e7cc1d8f2438bb314399c2456d16f3ffb) GoSublime package, bascially replace `gscomplete.py` in with [this](https://raw.githubusercontent.com/sipin/GoSublime/gorazor/gscomplete.py) and `gslint.py` with [this](https://raw.githubusercontent.com/sipin/GoSublime/gorazor/gslint.py)
-
-![auto complete](https://lh5.googleusercontent.com/-A95EdOJGVv8/U7kaSdMkP-I/AAAAAAAAH5A/5ZI4z7X2l_Y/w958-h664-no/Screen+Shot+2014-07-05+at+10.38.22+PM.png)
+* **Syntax highlight** Search & install `gorazor` via Package Control.
+* **Context aware auto-completion**, you may need to [manually modify](https://github.com/sipin/GoSublime/commit/fd0b979e7cc1d8f2438bb314399c2456d16f3ffb) GoSublime package, bascially replace `gscomplete.py` in with [this](https://raw.githubusercontent.com/sipin/GoSublime/gorazor/gscomplete.py) and `gslint.py` with [this](https://raw.githubusercontent.com/sipin/GoSublime/gorazor/gslint.py)
 
 ### Emacs
 [web-mode](http://web-mode.org/) supports Razor template engine, so add this into your Emacs config file:
@@ -300,16 +377,14 @@ Here is a simple example of [gorazor templates](https://github.com/sipin/gorazor
 
 # Credits
 
-The very [first version](https://github.com/sipin/gorazor/releases/tag/vash) of GoRazor is essentially a hack of razor's port in javascript: [vash](https://github.com/kirbysayshi/vash), thus requires node's to run.
+The very [first version](https://github.com/sipin/gorazor/releases/tag/vash) of `gorazor` is a hack of razor's port in javascript: [vash](https://github.com/kirbysayshi/vash), thus requires node's to run.
 
-GoRazor has been though several rounds of refactoring and it has completely rewritten in pure Go. Nonetheless, THANK YOU [@kirbysayshi](https://github.com/kirbysayshi) for Vash! Without Vash, GoRazor may never start.
+`gorazor` has been though several rounds of refactoring and it has completely rewritten in pure Go. Nonetheless, THANK YOU [@kirbysayshi](https://github.com/kirbysayshi) for Vash! Without Vash, `gorazor` may never start.
 
 # LICENSE
 
-[LICENSE](LICENSE)? Well, [WTFPL](http://www.wtfpl.net/about/).
+[LICENSE](LICENSE)? Well, [WTFPL](http://www.wtfpl.net/about/) and [996.icu](LICENSE).
 
 # Todo
 
-* Add default html widgets
-* Add more usage examples
-* Generate more function overloads, like accept additional buffer parameter for write
+[Todo](https://github.com/sipin/gorazor/blob/master/todo.md)

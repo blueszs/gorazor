@@ -1,8 +1,8 @@
-
+# gorazor tutorial
 
 ## Hello world
 
-Gorazor is a translator from `gohtml` to `go`. For every `gohtml` file will be translated into a Go program with a function declared, which will return a `string` value as HTML output.
+`gorazor` is a translator from `gohtml` to `go`. For every `gohtml` file will be translated into a Go program with a function declared, which will return a `string` value as HTML output.
 
 For example:
 
@@ -16,28 +16,31 @@ will be translated into:
 package demo
 
 import (
-	"bytes"
+  "bytes"
+  "strings"
 )
 
 func Hello() string {
-	var _buffer bytes.Buffer
-	_buffer.WriteString("<p>Hello world</p>")
+	var _b strings.Builder
+	RenderHello(&_b)
+	return _b.String()
+}
 
-	return _buffer.String()
+func RenderHello(_buffer io.StringWriter) {
+	_buffer.WriteString("<p>Hello world</p>")
 }
 ```
 
-Note: put hello.gohtml in a directory, the directory name will be used as package name in Go program.
+Note: put hello.gohtml in a directory, the directory name will be used as package name in go program.
 
 ## Routes
 
-Let's use framework [web.go](github.com/hoisie/web) as example,
+Let's use golang's built in [HTTP Server](https://gowebexamples.com/http-server/) as example,
 
 Firstly let's install web.go as below:
 ```shell
 mkdir src
 export GOPATH=$PWD
-go get github.com/hoisie/web
 ```
 
 the `Hello world` example in web.go is main.go:
@@ -46,21 +49,20 @@ the `Hello world` example in web.go is main.go:
 package main
 
 import (
-    "github.com/hoisie/web"
+	"fmt"
+	"net/http"
 )
 
-func hello(val string) string {
-    return "hello " + val
-}
-
 func main() {
-    web.Get("/(.*)", hello)
-    web.Run("0.0.0.0:9999")
-}
+	http.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Hello world!")
+	})
 
+	http.ListenAndServe(":8080", nil)
+}
 ```
 
-use command: `go run src/main.go` to start web server, and localhost:9999 will ready for use. For more details please have a look at: [web.go toturial](http://webgo.io/).
+use command: `go run src/main.go` to start web server, and localhost:9999 will ready for use.
 
 Then we make a new directory named `tpl` in project dir, and write an `index.gohtml` in it.
 
@@ -75,24 +77,23 @@ and then modify main.go:
 package main
 
 import (
+	"fmt"
+	"net/http"
+
 	"tpl"
-	"github.com/hoisie/web"
 )
 
-func init_web() {
-	web.Get("/index", tpl.Index)
-}
-
-func hello(val string) string {
-	return "hello " + val
-}
-
 func main() {
-	init_web()
-	web.Get("/(.*)", hello)
-	web.Run("0.0.0.0:9999")
-}
+	http.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Hello world!")
+  })
 
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, tpl.Index())
+	})
+
+	http.ListenAndServe(":8080", nil)
+}
 ```
 
 ## Code sections
