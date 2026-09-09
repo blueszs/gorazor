@@ -6,7 +6,7 @@ package cases
 
 import (
 	"cases/layout"
-	"github.com/sipin/gorazor/gorazor"
+	gorazor "github.com/sipin/gorazor/runtime"
 	"io"
 	"kp/models"
 	"strings"
@@ -32,7 +32,7 @@ func RenderSectionbug(_buffer io.StringWriter) {
 			// Line: 12
 			_buffer.WriteString("<script src=\"")
 			// Line: 12
-			_buffer.WriteString(gorazor.HTMLEscape(jsFile))
+			_buffer.WriteString(gorazor.URLEscape(jsFile))
 			// Line: 12
 			_buffer.WriteString("\"></script>")
 

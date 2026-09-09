@@ -1,5 +1,5 @@
-// Package gorazor name is kept for backward compatity
-package gorazor
+// Package runtime provides runtime helpers for gorazor template engine
+package runtime
 
 import (
 	"fmt"
@@ -42,4 +42,14 @@ func Capitalize(str string) string {
 		return ""
 	}
 	return strings.ToUpper(str[0:1]) + str[1:]
+}
+
+// Widget represents an HTML input widget
+type Widget struct {
+	Label       string
+	Value       string
+	Name        string
+	PlaceHolder string
+	Type        string
+	ErrorMsg    string
 }

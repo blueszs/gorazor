@@ -5,11 +5,11 @@
 [![996.icu](https://img.shields.io/badge/link-996.icu-red.svg)](https://996.icu)
 [![LICENSE](https://img.shields.io/badge/license-Anti%20996-blue.svg)](https://github.com/996icu/996.ICU/blob/master/LICENSE)
 
-`gorazor` is the Go port of the razor view engine originated from [asp.net in 2011](http://weblogs.asp.net/scottgu/archive/2010/07/02/introducing-razor.aspx). In summary, `gorazor` is:
+`gorazor` is the Go port of the Razor view engine originated from [ASP.NET in 2011](https://weblogs.asp.net/scottgu/archive/2010/07/02/introducing-razor.aspx). In summary, `gorazor` is:
 
 * Extremely Fast. Templates are converted into Go code and then compiled with optimizations.
 * Concise syntax, no delimiter like `<?`, `<%`, or `{{`.
-  * Original [Razor Syntax](http://www.asp.net/web-pages/tutorials/basics/2-introduction-to-asp-net-web-programming-using-the-razor-syntax) & [quick reference](http://haacked.com/archive/2011/01/06/razor-syntax-quick-reference.aspx/) for asp.net.
+  * Original [Razor Syntax](https://learn.microsoft.com/en-us/aspnet/core/mvc/views/razor) & [quick reference](https://haacked.com/archive/2011/01/06/razor-syntax-quick-reference.aspx/) for ASP.NET.
 * Able to mix go code in view template
   * Insert code block to import & call arbitrary go modules & functions
   * Flow controls are just Go, no need to learn another mini-language
@@ -19,16 +19,17 @@
 * Strong type view model
 * Embedding templates support
 * Layout/Section support
+* **Zero external dependencies**: Both the compiler/generator and the runtime library have zero third-party dependencies, keeping your projects clean and secure.
 
 # Extremely Fast
 
-`gorazor` is about **20X** times faster than [html/template](https://golang.org/pkg/html/template/) when using standard `strings.Builder` for template writing.
+`gorazor` is about **20X** faster than [html/template](https://pkg.go.dev/html/template) when using standard `strings.Builder` for template writing.
 
 When using `quicktemplate`'s `ByteBuffer` and `unsafeStrToBytes` method to for template writing, `gorazor`'s performance is comparable to [quicktemplate](https://github.com/valyala/quicktemplate), if not faster.
 
 Benchmark results:
 ```bash
-$ go test -bench='Benchmark(Razor|RazorQuick|Quick|HTML)Template' -benchmem github.com/valyala/quicktemplate/tests github.com/sipin/gorazor/tests
+$ cd tests && go test -bench='Benchmark(Razor|RazorQuick|Quick|HTML)Template' -benchmem
 goos: windows
 goarch: amd64
 pkg: github.com/valyala/quicktemplate/tests
@@ -56,7 +57,7 @@ PASS
 ok      github.com/sipin/gorazor/tests  19.921s
 ```
 
-* `BenchmarkRazorQuickTemplate`'s manually modified ensure **exact output** as quicktemplate for comparism.
+* `BenchmarkRazorQuickTemplate` is manually modified to ensure **exact output** as quicktemplate for comparison.
 * `BenchmarkRazorQuickTemplateOriginal` are `gorazor`'s default code-gen, which produce less white-space, thus faster.
 
 # Usage
@@ -71,6 +72,10 @@ ok      github.com/sipin/gorazor/tests  19.921s
 go install github.com/sipin/gorazor@latest
 ```
 
+## Quick Start
+
+Check out our step-by-step [Quick Start Guide](docs/quickstart.md) to build and run your first compiled template in under 5 minutes.
+
 ## Usage
 
 * Process folder: `gorazor template_folder output_folder`
@@ -78,20 +83,20 @@ go install github.com/sipin/gorazor@latest
 
 ## Examples
 
-[Examples] gives examples using layout / helper etc.
+The [Examples](examples/) directory gives examples using layouts, helpers, etc.
 
-When using layout, you may need to set `-prefix` parameter, like:
+When using layouts, you may need to set the `-prefix` parameter:
 
 ```bash
 git clone https://github.com/sipin/gorazor/
 cd gorazor
 go build
 
-# -prefix parameter here tells gorazor the current folder is the base path for github.com/sipin/gorazor
-# So that, when importing "github.com/sipin/gorazor/examples/tpl/layout" in example/tpl/home.gohtml
-# gorazor will know how to find the layout/helper files
+# The -prefix parameter here tells gorazor the current folder is the base path for github.com/sipin/gorazor.
+# So that, when importing "github.com/sipin/gorazor/examples/tpl/layout" in examples/tpl/home.gohtml,
+# gorazor will know how to find the layout/helper files.
 ./gorazor -prefix github.com/sipin/gorazor ./examples/tpl ./examples/tpl
-go run example/main.go
+go run examples/main.go
 ```
 
 # Syntax
@@ -100,7 +105,7 @@ go run example/main.go
 
 * `@variable` to insert **string** variable into html template
   * variable could be wrapped by arbitrary go functions
-  * variable inserted will be automatically [escaped](http://golang.org/pkg/html/template/#HTMLEscapeString)
+  * variable inserted will be automatically [escaped](https://pkg.go.dev/html/template/#HTMLEscapeString)
 
 ```html
 <div>Hello @user.Name</div>
@@ -116,11 +121,60 @@ Use `raw` to skip escaping:
 <div>@raw(user.Name)</div>
 ```
 
-Only use `raw` when you are 100% sure what you are doing, please always be aware of [XSS attack](http://en.wikipedia.org/wiki/Cross-site_scripting).
+Only use `raw` when you are 100% sure what you are doing. Please always be aware of [XSS attacks](https://en.wikipedia.org/wiki/Cross-site_scripting).
+
+### Context-aware escaping
+
+The escaping applied to `@variable` depends on where it appears in the document.
+HTML escaping is only correct in element content and ordinary attributes, so
+gorazor picks the right escaper at **compile time** — the generated code calls it
+directly, with no runtime cost:
+
+| Where the variable appears | Escaping applied |
+| --- | --- |
+| Element content, ordinary attribute | HTML escaping |
+| URL attribute (`href`, `src`, `action`, ...) | Scheme filtering + HTML escaping |
+| URL path / fragment (e.g. `/items/@id`, `#@frag`) | HTML escaping (preserves colons like `doc:123`) |
+| Query part of a URL attribute (after `?`) | Percent-encoding + HTML escaping |
+| Inside `<script>` | JavaScript escaping |
+| Inline event handlers (`onclick`, `on*`) | JavaScript escaping + HTML escaping (`JSAttrEscape`) |
+| Any attribute written without quotes | the above, plus encoding of whitespace, `` ` `` and `=` |
+
+```html
+<a href="@url">link</a>              <!-- javascript: is filtered out -->
+<a href="/items/@id">doc</a>         <!-- path colons (e.g. doc:123) preserved safely -->
+<a href="/search?q=@q">search</a>    <!-- cannot inject extra parameters -->
+<script>var n = "@name";</script>    <!-- cannot close the string or the tag -->
+<button onclick="fn('@name')">ok</button> <!-- dual JS + HTML escaping prevents breakout -->
+<p>@name</p>                         <!-- HTML escaped -->
+```
+
+Notes:
+
+* A URL whose scheme is not one of `http`, `https`, `mailto`, `tel`, `ftp` or
+  `ftps` is replaced by `#ZgotmplZ`, the same failsafe `html/template` uses. Use
+  `@raw(url)` if you really need another scheme.
+* If a URL attribute already has a path prefix (e.g. `/items/@id`), the expression
+  is in the path or fragment component, so scheme-filtering is bypassed to prevent
+  false-positive `#ZgotmplZ` flags on colon-separated IDs (RFC 3986).
+* Inline event handlers (`onclick`, `onmouseover`, etc.) undergo dual JS and HTML
+  escaping (`JSAttrEscape`) so that values cannot break out of JavaScript string
+  literals or HTML attribute quotes.
+* The optimizer automatically rewrites all typed string calls to zero-boxing
+  `*EscStr` variants (`URLEscStr`, `URLQueryEscStr`, `JSEscStr`, `JSAttrEscStr`, `HTMLEscStr`).
+* An attribute written without quotes (`<a href=@url>`) ends at the first space,
+  so escaping for the context is not enough on its own. Gorazor additionally
+  encodes the characters that would end the value, which stops a value like
+  `/x onmouseover=alert(1)` from adding a handler the template never wrote.
+* `<style>` blocks are still HTML-escaped; gorazor has no CSS escaper yet, so do
+  not put untrusted values there.
+
+Pass `-no-context-escape` to fall back to HTML-escaping everything, as gorazor
+did before this was added.
 
 ## Flow Control
 
-```php
+```html
 @if .... {
 	....
 }
@@ -342,16 +396,15 @@ Thus, it's possible for the layout to define default section content in such man
 
 # Conventions
 
-* Template **folder name** will be used as **package name** in generated code
-* Template file name must has the extension name `.gohtml`
-* Template strip of `.gohtml` extension name will be used as the **function name** in generated code, with **first letter Capitalized**.
-  * So that the function will be accessible to other modules. (I hate GO about this.)
-* Helper templates **must** has the package name **helper**, i.e. in `helper` folder.
-* Layout templates **must** has the package name **layout**, i.e. in `layout` folder.
+* Template **folder name** will be used as the **package name** in the generated code.
+* Template file name must have the extension `.gohtml`.
+* Template filename (excluding the `.gohtml` extension) will be used as the **function name** in the generated code, with the **first letter capitalized** (making it exported in Go).
+* Helper templates **must** have the package name **helper** (i.e., in the `helper` folder).
+* Layout templates **must** have the package name **layout** (i.e., in the `layout` folder).
 
 # Example
 
-Here is a simple example of [gorazor templates](https://github.com/sipin/gorazor/tree/master/examples/tpl) and the corresponding [generated codes](https://github.com/sipin/gorazor/tree/master/examples/gen).
+Here is a simple example of [gorazor templates and generated Go code](examples/tpl/).
 
 # FAQ
 
